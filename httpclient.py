@@ -36,8 +36,6 @@ class HTTPResponse(object):
     def __init__(self, code=200, body=""):
         self.code = code
         self.body = body
-        print(type(code))
-        print(type(self.code))
 
 
 class HTTPClient(object):
@@ -60,8 +58,7 @@ class HTTPClient(object):
 
     def get_body(self, data):
         #body = re.findall('(?:\\r\\n\\r\\n)(.*)', data)
-        print(type(data.find('\r\n\r\n')))
-        body = data[data.find('\r\n\r\n'):-1]
+        body = data[data.find('\r\n\r\n'):]
         return body
 
     def sendall(self, data):
@@ -80,21 +77,41 @@ class HTTPClient(object):
                 buffer.extend(part)
             else:
                 done = not part
-        return buffer.decode('utf-8')
+        return buffer.decode()
 
     def GET(self, url, args=None):
         code = 500
         body = ""
         url_dict = self.interprate_url(url)
         try:
-            self.connect(url_dict['host'], int(url_dict['port']))
+            print(url_dict['scheme'])
+            print(url_dict['host'])
 
-            self.socket.sendall(b'GET / HTTP/1.1 \r\n')
+            ip_address = socket.gethostbyname(url_dict['host'])
+            if 'port' in url_dict.keys():
+                self.connect(ip_address, int(url_dict['port']))
+            else:
+                self.connect(url_dict['host'], 80)
+
+            if 'path' in url_dict.keys():
+
+                Get_line_1 = 'GET ' + '/' + str(
+                    url_dict['path']) + ' HTTP/1.1 \r\n'
+                print(Get_line_1)
+                self.socket.sendall(('GET ' + '/' + str(url_dict['path']) +
+                                     ' HTTP/1.1 \r\n').encode('utf-8'))
+
+            else:
+
+                self.socket.sendall(b'GET / HTTP/1.1 \r\n')
             self.socket.sendall(
                 ('Host: ' + url_dict['host'] + '\r\n').encode('utf-8'))
             self.socket.sendall(b'Connection: close\r\n')
+            self.socket.sendall(
+                b'Accept: x-www-form-urlencoded, text/html\r\n')
             self.socket.sendall(b'\r\n')
             received_data = self.recvall(self.socket)
+            print('This is the received_data: ' + str(received_data))
             code = self.get_code(received_data)
             body = self.get_body(received_data)
         except ConnectionRefusedError:
@@ -104,24 +121,38 @@ class HTTPClient(object):
         return HTTPResponse(code=code, body=body)
 
     def POST(self, url, args=None):
-        code = 500
+        code = 200
         body = ""
         url_dict = self.interprate_url(url)
         content_type = "application/x-www-form-urlencoded"
+
+        #host, file_location = self.interprate_post_address(url_dict['host'] +
+        #url_dict['path'])
+        '''
         if self.interprate_file_type(args):
             if self.interprate_file_type(args) in type_text:
                 content_type = "text/" + self.interprate_file_type(args)
+        '''
+
+        if type(args) == dict:
+            for key, item in args.items():
+                body = body + key + '=' + item + '&'
+            body = body[0:-1]
+        print('\n' + body + '\n')
         try:
+            print(url_dict)
             self.connect(url_dict['host'], int(url_dict['port']))
-            self.socket.sendall(
-                ('POST ' + args + ' / HTTP/1.1 \r\n').encode('utf-8'))
+            self.socket.sendall(('POST ' + '/' + url_dict['path'] +
+                                 ' HTTP/1.1 \r\n').encode('utf-8'))
             self.socket.sendall(
                 ('Host: ' + url_dict['host'] + '\r\n').encode('utf-8'))
             self.socket.sendall(
                 ('Content-Type: ' + content_type + '\r\n').encode('utf-8'))
-            self.socket.sendall('Content-Length: ' +
-                                str(len(args) + '\r\n').encode('utf-8'))
+            self.socket.sendall(
+                ('Content-Length: ' + str(len(body)) + '\r\n').encode('utf-8'))
             self.socket.sendall(b'Connection: close\r\n')
+            self.socket.sendall(b'\r\n')
+            self.socket.sendall(body.encode('utf-8'))
             self.socket.sendall(b'\r\n')
             received_data = self.recvall(self.socket)
             code = self.get_code(received_data)
@@ -146,17 +177,23 @@ class HTTPClient(object):
                 http_dict['scheme'] = 'http://'
             if re.search('https?:\/\/[\w\.]+:\d+(\/[\w\.]+)?', url):
                 http_dict['host'] = re.findall(
-                    '(?:https?:\/\/)([\w\.]+)(?::\d+(\/[\w\.]+)?)', url)[0][0]
+                    '(?:https?:\/\/)([\w\.]+)(?::\d+\/[\w\.]+)', url)[0]
+                print(url)
+                print('check: host' + str(http_dict['host']))
 
                 http_dict['port'] = re.findall(
-                    '(?:https?:\/\/[\w\.]+:)(\d+)(?:(\/[\w\.]+)?)', url)[0][0]
-
-            elif re.search('https?:\/\/[\w\.]+(\/[\w\.]+)?', url):
+                    '(?:https?:\/\/[\w\.]+:)(\d+)(?:\/[\w\.]+)', url)[0]
+                print('check port: ' + str(http_dict['port']))
+            elif re.search('https?:\/\/[\w\.\/\=\+\?]+', url):
                 http_dict['host'] = re.findall(
-                    '(?:https?:\/\/)([\w\.]+)(?:((\/[\w\.]+)?))', url)
-            if re.search('(?:https?:\/\/[\w\.]+:\d+)(\/).*', url):
-                http_dict['path'] = re.findall(
-                    '(?:https?:\/\/[\w\.]+:\d+\/)([\w\.]+)', url)[0][0]
+                    '(?:https?:\/\/)([\w\.]+)(?:\/[\w\.]+)?', url)[0]
+            if re.search('(?:https?:\/\/[\w\.]+(:\d+)?)(\/).*', url):
+                if re.search('(?:https?:\/\/[\w\.]+)(?::\d+)?(?:\/)(.*)',
+                             url) != None:
+                    http_dict['path'] = re.findall(
+                        '(?:https?:\/\/[\w\.]+)(?::\d+)?(?:\/)(.*)', url)[0]
+                elif url[-1] == '/':
+                    http_dict['host'] = http_dict['host']
             return http_dict
         except KeyError:
             sys.stdout.write('something wrong with the dict\n')
@@ -168,10 +205,11 @@ class HTTPClient(object):
                 return re.findall('(?:\w+\.)(\w{3,10})', file_name)[0]
         else:
             return None
-    
+
     def interprate_post_address(self, address):
+        print('The address in POST is: ' + address)
         http_deleted = re.findall('(?:https?:\/\/)(.*)', address)
-        location_list = http_deleted.split('/')
+        location_list = http_deleted[0].split('/')
         host = location_list[0]
         file_location = re.sub(host, '', http_deleted)
         return host, file_location
@@ -184,10 +222,12 @@ if __name__ == "__main__":
         help()
         sys.exit(1)
     elif (len(sys.argv) == 3):
+
         request_method = sys.argv[1]
         url = sys.argv[2]
 
         http_response = client.command(sys.argv[2], sys.argv[1])
+        print(http_response.code)
 
     else:
         print(client.command(sys.argv[1]))
