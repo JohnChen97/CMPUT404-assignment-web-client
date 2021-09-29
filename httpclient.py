@@ -168,6 +168,13 @@ class HTTPClient(object):
                 return re.findall('(?:\w+\.)(\w{3,10})', file_name)[0]
         else:
             return None
+    
+    def interprate_post_address(self, address):
+        http_deleted = re.findall('(?:https?:\/\/)(.*)', address)
+        location_list = http_deleted.split('/')
+        host = location_list[0]
+        file_location = re.sub(host, '', http_deleted)
+        return host, file_location
 
 
 if __name__ == "__main__":
