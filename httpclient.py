@@ -47,7 +47,7 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-
+        print(data)
         code = re.findall('(?:HTTP\/\d\.\d\s)(\d{3})(?:.*)', data)
         return int(code[0])
 
@@ -69,49 +69,58 @@ class HTTPClient(object):
 
     # read everything from the socket
     def recvall(self, sock):
-        buffer = bytearray()
-        done = False
-        while not done:
-            part = sock.recv(1024)
-            if (part):
-                buffer.extend(part)
-            else:
-                done = not part
-        return buffer.decode()
+        try:
+            buffer = bytearray()
+            done = False
+            while not done:
+                part = sock.recv(1024)
+                if (part):
+                    buffer.extend(part)
+                else:
+                    done = not part
+            return buffer.decode(encoding='UTF-8', errors='ignore')
+        except UnicodeDecodeError:
+            print('UnicodeDecodeError')
 
     def GET(self, url, args=None):
         code = 500
         body = ""
         url_dict = self.interprate_url(url)
         try:
-            print(url_dict['scheme'])
-            print(url_dict['host'])
 
             ip_address = socket.gethostbyname(url_dict['host'])
             if 'port' in url_dict.keys():
                 self.connect(ip_address, int(url_dict['port']))
             else:
-                self.connect(url_dict['host'], 80)
+                self.connect(ip_address, 80)
 
             if 'path' in url_dict.keys():
 
                 Get_line_1 = 'GET ' + '/' + str(
                     url_dict['path']) + ' HTTP/1.1 \r\n'
-                print(Get_line_1)
-                self.socket.sendall(('GET ' + '/' + str(url_dict['path']) +
-                                     ' HTTP/1.1 \r\n').encode('utf-8'))
+
+                #self.socket.sendall(('GET ' + '/' + str(url_dict['path']) +
+                #' HTTP/1.1 \r\n').encode('utf-8'))
+                self.socket.sendall(
+                    ('GET ' + str(urllib.parse.urlparse(url).path) +
+                     ' HTTP/1.1 \r\n').encode('utf-8'))
 
             else:
 
                 self.socket.sendall(b'GET / HTTP/1.1 \r\n')
+            #self.socket.sendall(
+            #('Host: ' + url_dict['host'] + '\r\n').encode('utf-8'))
             self.socket.sendall(
-                ('Host: ' + url_dict['host'] + '\r\n').encode('utf-8'))
+                ('Host: ' + str(urllib.parse.urlparse(url).hostname) +
+                 '\r\n').encode('utf-8'))
+            Get_line_2 = 'Host: ' + url_dict['host'] + '\r\n'
+
             self.socket.sendall(b'Connection: close\r\n')
             self.socket.sendall(
-                b'Accept: x-www-form-urlencoded, text/html\r\n')
+                b'Accept: application/x-www-form-urlencoded, text/html\r\n')
             self.socket.sendall(b'\r\n')
             received_data = self.recvall(self.socket)
-            print('This is the received_data: ' + str(received_data))
+
             code = self.get_code(received_data)
             body = self.get_body(received_data)
         except ConnectionRefusedError:
@@ -138,10 +147,15 @@ class HTTPClient(object):
             for key, item in args.items():
                 body = body + key + '=' + item + '&'
             body = body[0:-1]
-        print('\n' + body + '\n')
+
         try:
-            print(url_dict)
-            self.connect(url_dict['host'], int(url_dict['port']))
+
+            #self.connect(url_dict['host'], int(url_dict['port']))
+            ip_address = socket.gethostbyname(url_dict['host'])
+            if 'port' in url_dict.keys():
+                self.connect(ip_address, int(url_dict['port']))
+            else:
+                self.connect(url_dict['host'], 80)
             self.socket.sendall(('POST ' + '/' + url_dict['path'] +
                                  ' HTTP/1.1 \r\n').encode('utf-8'))
             self.socket.sendall(
@@ -178,12 +192,10 @@ class HTTPClient(object):
             if re.search('https?:\/\/[\w\.]+:\d+(\/[\w\.]+)?', url):
                 http_dict['host'] = re.findall(
                     '(?:https?:\/\/)([\w\.]+)(?::\d+\/[\w\.]+)', url)[0]
-                print(url)
-                print('check: host' + str(http_dict['host']))
 
                 http_dict['port'] = re.findall(
                     '(?:https?:\/\/[\w\.]+:)(\d+)(?:\/[\w\.]+)', url)[0]
-                print('check port: ' + str(http_dict['port']))
+
             elif re.search('https?:\/\/[\w\.\/\=\+\?]+', url):
                 http_dict['host'] = re.findall(
                     '(?:https?:\/\/)([\w\.]+)(?:\/[\w\.]+)?', url)[0]
@@ -222,12 +234,9 @@ if __name__ == "__main__":
         help()
         sys.exit(1)
     elif (len(sys.argv) == 3):
-
-        request_method = sys.argv[1]
-        url = sys.argv[2]
-
-        http_response = client.command(sys.argv[2], sys.argv[1])
-        print(http_response.code)
+        http_result = client.command(sys.argv[2], sys.argv[1])
+        print(http_result.code)
+        print(http_result.body)
 
     else:
         print(client.command(sys.argv[1]))
