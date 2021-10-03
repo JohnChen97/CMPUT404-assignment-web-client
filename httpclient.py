@@ -87,38 +87,44 @@ class HTTPClient(object):
         body = ""
         url_dict = self.interprate_url(url)
         try:
-
-            ip_address = socket.gethostbyname(url_dict['host'])
+            ip_address = url_dict['host']
+            #ip_address = socket.gethostbyname(url_dict['host'])
+            #ip_address = '127.0.0.1'
             if 'port' in url_dict.keys():
                 self.connect(ip_address, int(url_dict['port']))
             else:
                 self.connect(ip_address, 80)
+                #self.connect(ip_address, 8080)
 
             if 'path' in url_dict.keys():
 
                 Get_line_1 = 'GET ' + '/' + str(
-                    url_dict['path']) + ' HTTP/1.1 \r\n'
+                    url_dict['path']) + 'HTTP/1.1 \r\n'
 
-                #self.socket.sendall(('GET ' + '/' + str(url_dict['path']) +
-                #' HTTP/1.1 \r\n').encode('utf-8'))
-                self.socket.sendall(
-                    ('GET ' + str(urllib.parse.urlparse(url).path) +
-                     ' HTTP/1.1 \r\n').encode('utf-8'))
+                self.socket.sendall(('GET ' + '/' + url_dict['path'] +
+                                     ' HTTP/1.1\r\n').encode('utf-8'))
 
             else:
 
-                self.socket.sendall(b'GET / HTTP/1.1 \r\n')
-            #self.socket.sendall(
-            #('Host: ' + url_dict['host'] + '\r\n').encode('utf-8'))
+                self.socket.sendall('GET / HTTP/1.1 \r\n'.encode('utf-8'))
             self.socket.sendall(
-                ('Host: ' + str(urllib.parse.urlparse(url).hostname) +
-                 '\r\n').encode('utf-8'))
+                ('Host: ' + url_dict['host'] + '\r\n').encode('utf-8'))
+
             Get_line_2 = 'Host: ' + url_dict['host'] + '\r\n'
 
-            self.socket.sendall(b'Connection: close\r\n')
+            self.socket.sendall(('Connection: close\r\n').encode('utf-8'))
             self.socket.sendall(
-                b'Accept: application/x-www-form-urlencoded, text/html\r\n')
-            self.socket.sendall(b'\r\n')
+                ('Accept: application/x-www-form-urlencoded, text/html\r\n'
+                 ).encode('utf-8'))
+            self.socket.sendall(('\r\n').encode('utf-8'))
+            '''
+            self.socket.sendall(
+                ('GET ' + '/' + url_dict['path'] + ' HTTP/1.1 \r\n' +
+                 'Host: ' + url_dict['host'] + '\r\n' +
+                 'Connection: close\r\n' +
+                 'Accept: application/x-www-form-urlencoded, text/html\r\n' +
+                 '\r\n').encode('utf-8'))
+            '''
             received_data = self.recvall(self.socket)
 
             code = self.get_code(received_data)
