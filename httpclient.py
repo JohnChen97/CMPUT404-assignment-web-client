@@ -227,9 +227,8 @@ if __name__ == "__main__":
         help()
         sys.exit(1)
     elif (len(sys.argv) == 3):
-        http_result = client.command(sys.argv[2], sys.argv[1])
-        print(http_result.code)
-        print(http_result.body)
+        print(client.command(sys.argv[2], sys.argv[1]))
+        
 
     else:
         print(client.command(sys.argv[1]))
