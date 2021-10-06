@@ -39,7 +39,7 @@ class HTTPResponse(object):
 
 
 class HTTPClient(object):
-    #def get_host_port(self,url):
+    
 
     def connect(self, host, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -52,12 +52,12 @@ class HTTPClient(object):
         return int(code[0])
 
     def get_headers(self, data):
-        #header = re.findall('\\r\\n\\r\\n', data)
+        
         header = data[0:data.find('\r\n\r\n')]
         return header[0]
 
     def get_body(self, data):
-        #body = re.findall('(?:\\r\\n\\r\\n)(.*)', data)
+        
         body = data[data.find('\r\n\r\n'):]
         return body
 
@@ -67,7 +67,7 @@ class HTTPClient(object):
     def close(self):
         self.socket.close()
 
-    # read everything from the socket
+    
     def recvall(self, sock):
         try:
             buffer = bytearray()
@@ -83,30 +83,29 @@ class HTTPClient(object):
             print('UnicodeDecodeError')
 
     def GET(self, url, args=None):
-        code = 500
+        code = 404
         body = ""
         url_dict = self.interprate_url(url)
         try:
             ip_address = url_dict['host']
-            #ip_address = socket.gethostbyname(url_dict['host'])
-            #ip_address = '127.0.0.1'
+            
             if 'port' in url_dict.keys():
                 self.connect(ip_address, int(url_dict['port']))
             else:
                 self.connect(ip_address, 80)
-                #self.connect(ip_address, 8080)
+                
 
             if 'path' in url_dict.keys():
 
                 Get_line_1 = 'GET ' + '/' + str(
-                    url_dict['path']) + 'HTTP/1.1 \r\n'
+                    url_dict['path']) + 'HTTP/1.1\r\n'
 
                 self.socket.sendall(('GET ' + '/' + url_dict['path'] +
                                      ' HTTP/1.1\r\n').encode('utf-8'))
 
             else:
 
-                self.socket.sendall('GET / HTTP/1.1 \r\n'.encode('utf-8'))
+                self.socket.sendall('GET / HTTP/1.1\r\n'.encode('utf-8'))
             self.socket.sendall(
                 ('Host: ' + url_dict['host'] + '\r\n').encode('utf-8'))
 
@@ -117,53 +116,41 @@ class HTTPClient(object):
                 ('Accept: application/x-www-form-urlencoded, text/html\r\n'
                  ).encode('utf-8'))
             self.socket.sendall(('\r\n').encode('utf-8'))
-            '''
-            self.socket.sendall(
-                ('GET ' + '/' + url_dict['path'] + ' HTTP/1.1 \r\n' +
-                 'Host: ' + url_dict['host'] + '\r\n' +
-                 'Connection: close\r\n' +
-                 'Accept: application/x-www-form-urlencoded, text/html\r\n' +
-                 '\r\n').encode('utf-8'))
-            '''
+            
             received_data = self.recvall(self.socket)
 
             code = self.get_code(received_data)
             body = self.get_body(received_data)
         except ConnectionRefusedError:
-            #self.socket.send("HTTP/1.1 404 Not Found \r\n".encode('utf-8'))
+            
             http_response = HTTPResponse(code=404, body="")
             return http_response
         return HTTPResponse(code=code, body=body)
 
     def POST(self, url, args=None):
-        code = 200
+        code = 404
         body = ""
         url_dict = self.interprate_url(url)
         content_type = "application/x-www-form-urlencoded"
 
-        #host, file_location = self.interprate_post_address(url_dict['host'] +
-        #url_dict['path'])
-        '''
-        if self.interprate_file_type(args):
-            if self.interprate_file_type(args) in type_text:
-                content_type = "text/" + self.interprate_file_type(args)
-        '''
+       
 
         if type(args) == dict:
             for key, item in args.items():
                 body = body + key + '=' + item + '&'
             body = body[0:-1]
+        
 
         try:
 
-            #self.connect(url_dict['host'], int(url_dict['port']))
+            
             ip_address = socket.gethostbyname(url_dict['host'])
             if 'port' in url_dict.keys():
                 self.connect(ip_address, int(url_dict['port']))
             else:
                 self.connect(url_dict['host'], 80)
             self.socket.sendall(('POST ' + '/' + url_dict['path'] +
-                                 ' HTTP/1.1 \r\n').encode('utf-8'))
+                                 ' HTTP/1.1\r\n').encode('utf-8'))
             self.socket.sendall(
                 ('Host: ' + url_dict['host'] + '\r\n').encode('utf-8'))
             self.socket.sendall(
@@ -179,7 +166,7 @@ class HTTPClient(object):
             body = self.get_body(received_data)
             return HTTPResponse(code, body)
         except ConnectionRefusedError:
-            #self.socket.send("HTTP/1.1 404 Not Found \r\n".encode('utf-8'))
+            
             http_response = HTTPResponse(code=404, body="")
             return http_response
         return HTTPResponse(code=code, body=body)
@@ -197,10 +184,10 @@ class HTTPClient(object):
                 http_dict['scheme'] = 'http://'
             if re.search('https?:\/\/[\w\.]+:\d+(\/[\w\.]+)?', url):
                 http_dict['host'] = re.findall(
-                    '(?:https?:\/\/)([\w\.]+)(?::\d+\/[\w\.]+)', url)[0]
+                    '(?:https?:\/\/)([\w\.]+)(?::\d+\/[\w\.]+)?', url)[0]
 
                 http_dict['port'] = re.findall(
-                    '(?:https?:\/\/[\w\.]+:)(\d+)(?:\/[\w\.]+)', url)[0]
+                    '(?:https?:\/\/[\w\.]+:)(\d+)(?:\/[\w\.]+)?', url)[0]
 
             elif re.search('https?:\/\/[\w\.\/\=\+\?]+', url):
                 http_dict['host'] = re.findall(
