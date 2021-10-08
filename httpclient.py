@@ -22,7 +22,6 @@ import sys
 import socket
 import re
 # you may use urllib to encode data appropriately
-import urllib.parse
 
 type_text = ['css', 'csv', 'html', 'javascript', 'plain', 'xml']
 type_application = ['x-www-form-urlencoded', 'octet-stream']
@@ -39,8 +38,6 @@ class HTTPResponse(object):
 
 
 class HTTPClient(object):
-    
-
     def connect(self, host, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((host, port))
@@ -52,12 +49,12 @@ class HTTPClient(object):
         return int(code[0])
 
     def get_headers(self, data):
-        
+
         header = data[0:data.find('\r\n\r\n')]
         return header[0]
 
     def get_body(self, data):
-        
+
         body = data[data.find('\r\n\r\n'):]
         return body
 
@@ -67,7 +64,6 @@ class HTTPClient(object):
     def close(self):
         self.socket.close()
 
-    
     def recvall(self, sock):
         try:
             buffer = bytearray()
@@ -88,12 +84,11 @@ class HTTPClient(object):
         url_dict = self.interprate_url(url)
         try:
             ip_address = url_dict['host']
-            
+
             if 'port' in url_dict.keys():
                 self.connect(ip_address, int(url_dict['port']))
             else:
                 self.connect(ip_address, 80)
-                
 
             if 'path' in url_dict.keys():
 
@@ -116,13 +111,15 @@ class HTTPClient(object):
                 ('Accept: application/x-www-form-urlencoded, text/html\r\n'
                  ).encode('utf-8'))
             self.socket.sendall(('\r\n').encode('utf-8'))
-            
+
             received_data = self.recvall(self.socket)
 
             code = self.get_code(received_data)
             body = self.get_body(received_data)
+            self.close()
+            return HTTPResponse(code=code, body=body)
         except ConnectionRefusedError:
-            
+
             http_response = HTTPResponse(code=404, body="")
             return http_response
         return HTTPResponse(code=code, body=body)
@@ -133,17 +130,13 @@ class HTTPClient(object):
         url_dict = self.interprate_url(url)
         content_type = "application/x-www-form-urlencoded"
 
-       
-
         if type(args) == dict:
             for key, item in args.items():
                 body = body + key + '=' + item + '&'
             body = body[0:-1]
-        
 
         try:
 
-            
             ip_address = socket.gethostbyname(url_dict['host'])
             if 'port' in url_dict.keys():
                 self.connect(ip_address, int(url_dict['port']))
@@ -164,12 +157,12 @@ class HTTPClient(object):
             received_data = self.recvall(self.socket)
             code = self.get_code(received_data)
             body = self.get_body(received_data)
+            self.close()
             return HTTPResponse(code, body)
         except ConnectionRefusedError:
-            
+
             http_response = HTTPResponse(code=404, body="")
             return http_response
-        return HTTPResponse(code=code, body=body)
 
     def command(self, url, command="GET", args=None):
         if (command == "POST"):
@@ -228,7 +221,6 @@ if __name__ == "__main__":
         sys.exit(1)
     elif (len(sys.argv) == 3):
         print(client.command(sys.argv[2], sys.argv[1]))
-        
 
     else:
         print(client.command(sys.argv[1]))
